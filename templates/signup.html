@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Sign Up - Password Manager</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Sign Up</h1>
+        <form action="{{ url_for('signup') }}" method="post">
+            <label for="email">Email:</label>
+            <input type="text" id="email" name="email" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="confirm_password">Confirm Password:</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+
+            <button type="submit">Sign Up</button>
+        </form>
+    </div>
+</body>
+</html>

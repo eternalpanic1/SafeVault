@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Update Password - Password Manager</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Update Password</h1>
+        <form action="{{ url_for('update_password') }}" method="post">
+            <label for="website">Website:</label>
+            <input type="text" id="website" name="website" required>
+
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="new_password">New Password:</label>
+            <input type="password" id="new_password" name="new_password" required>
+
+            <button type="submit">Update Password</button>
+        </form>
+    </div>
+</body>
+</html>
