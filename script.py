@@ -3,10 +3,27 @@ import getpass
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from cryptography.fernet import Fernet
+from flask import Flask, render_template, request, redirect, url_for, session
+
+
+app = Flask(__name__)
+app.secret_key = '\xfd{H\xe5<\x95\xf9\xe3\x96.5\xd1\x01O<!\xd5\xa2\xa0\x9fR"\xa1\xa8'
+
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_email' in session:
+        email = ''
+        return render_template('dashboard.html', email=email)
+    else:
+        return redirect(url_for('signin'))
 
 
 # ------------ ENCRYPTION & DECRYPTION ------------
-
 def new_key():
     key = Fernet.generate_key()
     return key.decode()
@@ -20,20 +37,17 @@ def load_user_fernet_key(email):
                 return user_key
     return None
 
-# Function to encrypt a plaintext password using the user's Fernet key
 def encrypt_password(user_key, password):
     cipher_suite = Fernet(user_key)
     encrypted_password = cipher_suite.encrypt(password.encode())
     return encrypted_password.decode()
 
-# Function to decrypt an encrypted password using the user's Fernet key
 def decrypt_password(user_key, encrypted_password):
     cipher_suite = Fernet(user_key)
     decrypted_password = cipher_suite.decrypt(encrypted_password.encode())
     return decrypted_password.decode()
 
 
-# Function to display all stored passwords of a user
 def display_passwords(email):
     user_key = load_user_fernet_key(email)
     if user_key:
@@ -51,12 +65,8 @@ def display_passwords(email):
         return "User not found."
 
 
-# Function to insert a new password
-def insert_password(email):
-    website = input("Enter the website: ")
-    username = input("Enter the username: ")
-    password = getpass.getpass("Enter the password: ")
-
+def insert_password(username, website, password):
+    email = curr_user[0]
     user_key = load_user_fernet_key(email)
     if user_key:
         encrypted_password = encrypt_password(user_key, password)
@@ -72,28 +82,23 @@ def insert_password(email):
         return "User not found."
 
 
-def update_password(email):
+def update_password(username, website, new_password):
+    email = curr_user[0]
     user_key = load_user_fernet_key(email)
     if user_key:
-        website = input("Enter the website: ")
-        username = input("Enter the username: ")
-        new_password = getpass.getpass("Enter the new password: ")
-
         response = supabase.table('passwords').select('*').match({'user_email': email, 'website': website, 'username': username}).execute()
         encrypted_new_password = encrypt_password(user_key, new_password)
 
         response = supabase.table('passwords').update({'password': encrypted_new_password}).eq('username', username).execute()
-
+        return "Password updated successfully"
     else:
         return "User not found."
 
 
-def delete_password(email):
+def delete_password(website, username):
+    email = curr_user[0]
     user_key = load_user_fernet_key(email)
     if user_key:
-        website = input("Enter the website: ")
-        username = input("Enter the username: ")
-
         existing_password = supabase.table('passwords').select('*').match({'user_email': email, 'website': website, 'username': username}).execute()
 
         if existing_password.data:
@@ -107,8 +112,7 @@ def delete_password(email):
         else:
             return "Password not found."
     else:
-        return "User's "
-
+        return "User Key Error "
 
 
 #------------- USER AUTHENTICATION ------------
@@ -120,23 +124,15 @@ def isNewUser(email):
     return True
 
 
-def signup():
-    email = input("Enter your EmailID: ")
-
+def signup(email, password, confirm_password):
     if isNewUser(email):
-        password = getpass.getpass("Enter your Master Password: ")
-        password2 = getpass.getpass("Confirm your Master Password: ")
-
-        if password != password2:
-            if input("Passwords do not match.. Do you want to retry?(Y/N): ") in {'Y','y'}:
-                signup()
-            else:
-                return "Passwords do not match. Signup canceled."
+        if password != confirm_password:
+            return "Passwords do not match. Signup canceled."
         
         try:
             res = supabase.auth.sign_up({
                 "email": email,
-                "password": password2,
+                "password": confirm_password,
             })
     
             data, count = supabase.table('users').insert({'email': email}).execute()
@@ -153,76 +149,117 @@ def signup():
         return "User already registered. Please SignIn"
 
 
+@app.route('/signin', methods=['GET', 'POST'])
 def signin():
-    email = input("Enter your EmailID: ")
-    password = getpass.getpass("Enter your password: ")
-    try:
-        data = supabase.auth.sign_in_with_password({"email": email, "password": password})
-        session = supabase.auth.get_session()
-        return (True, email)
-    except Exception as e:
-        return (False, f"Signin failed. {e}")
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
 
+        try:
+            data = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            curr_user.append(email)
+            return redirect(url_for('dashboard'))
+
+        except Exception as e:
+            return render_template('failure.html', message=f"Signin failed. {e}")
+    else:
+        return render_template('signin.html') 
+
+
+@app.route('/signup', methods = ['GET', 'POST'])
+def signup_route():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        result = signup(email, password, confirm_password)
+        if "Password inserted successfully" in result:
+            return render_template('success.html', message=result)
+        else:
+            return render_template('failure.html', message=result)
+
+    else:
+        return render_template('signup.html')
+
+
+@app.route('/insert_password', methods=['GET','POST'])
+def insert_password_route():
+    if request.method == 'POST':
+        username = request.form['username']
+        website = request.form['website']
+        password = request.form['password']
+        result = insert_password(username, website, password)
+        
+        if "Password inserted successfully" in result:
+            return render_template('success.html', message=result)
+        else:
+            return render_template('failure.html', message=result)
+    else:
+        return render_template('insert_password.html')
+
+
+@app.route('/update_password', methods=['GET','POST'])
+def update_password_route():
+    email = curr_user[0]
+    if request.method == 'POST':
+        username = request.form['username']
+        website = request.form['website']
+        password = request.form['new_password']
+        result = update_password(username, website, password)
+        
+        if "Password updated successfully" in result:
+            return render_template('success.html', message=result)
+        else:
+            return render_template('failure.html', message=result)
+    else:
+        return render_template('update.html')
+
+
+@app.route('/delete_password', methods=['GET','POST'])
+def delete_password_route():
+    if request.method == 'POST':
+        email = curr_user[0]
+        website = request.form['website']
+        username = request.form['username']
+
+        result = delete_password(website, username)
+
+        return render_template('failure.html', message=result)
+    else:
+        return render_template('delete.html')
+
+
+@app.route('/display_passwords', methods=['GET', 'POST'])
+def display_password_route():
+        email = curr_user[0]
+        user_key = load_user_fernet_key(email)
+
+        if user_key:
+            response = supabase.table('passwords').select('*').match({'user_email': email}).execute()
+            passwords = []
+
+            for entry in response.data:
+                decrypted_password = decrypt_password(user_key, entry['password'])
+                passwords.append({
+                    'website': entry['website'],
+                    'username': entry['username'],
+                    'password': decrypted_password
+                })
+
+            return render_template('display.html', passwords=passwords)
+        else:
+            return render_template('failure.html', message="User not found.")
 
 
 if __name__ == "__main__":
+    
     load_dotenv('.env')
     url: str = os.getenv('SUPABASE_URL')
     key: str = os.getenv('SUPABASE_API')
     supabase: Client = create_client(url, key)
     
-    print("\nWelcome to the Password Manager!")
-
-    while True:
-        print("\nOptions:")
-        print("1. Sign In")
-        print("2. Sign Up")
-        print("3. Exit")
-
-        choice = input("Select an option (1/2/3): ")
-
-        if choice == '1':
-            session = signin()
-            if session[0]:
-                email = session[1]
-                print(f"\nWelcome, {email}!")
-                while True:
-                    print("\nOperations:")
-                    print("1. Insert Password")
-                    print("2. Display Passwords")
-                    print("3. Update Password")
-                    print("4. Delete Password")
-                    print("5. Exit")
-
-                    operation = input("Select an operation (1/2/3/4/5): ")
-
-                    if operation == '1':
-                        insert_password(email)
-                    elif operation == '2':
-                        display_passwords(email)
-                    elif operation == '3':
-                        update_password(email)
-                    elif operation == '4':
-                        delete_password(email)
-                    elif operation == '5':
-                        print("Signing out...")
-                        res = supabase.auth.sign_out()
-                        break
-                    else:
-                        print("Invalid operation. Please select again.")
-
-                else:
-                    print(session[1])
-
-        elif choice == '2':
-            result = signup()
-            print(result)
-
-        elif choice == '3':
-            print("Exiting. Goodbye!")
-            break
-
-        else:
-            print("Invalid choice. Please select again.")
+    curr_user = []
+    app.run(debug=True)
 
     res = supabase.auth.sign_out()

@@ -1,15 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <title>Display Passwords - Password Manager</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    h2 {
+      color: #3498db;
+    }
+  </style>
+  <title>Display Passwords</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Display Passwords</h1>
-        <!-- Add a table to display passwords here -->
-    </div>
+
+  <h2>Passwords</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Website</th>
+        <th>Username</th>
+        <th>Password</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in passwords %}
+        <tr>
+          <td>{{ entry.website }}</td>
+          <td>{{ entry.username }}</td>
+          <td>{{ entry.password }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
 </body>
 </html>
