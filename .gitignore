@@ -1,2 +1,3 @@
 /keys.env
-/.env
+.env
+venv
